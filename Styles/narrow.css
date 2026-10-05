@@ -1,0 +1,81 @@
+@media screen and (max-width: 500px) {
+  :root {
+    font-size: calc(0.5vw + 0.8rem + 0.5vh);
+  }
+  .content-wrapper {
+    padding: 1rem;
+  }
+  /* Nav */
+  .navBtns {
+    font-size: 0.8rem;
+  }
+
+  /* Controls */
+  .baseControlsWrapper {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 0.5rem 1rem;
+  }
+  .extraControlsWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    white-space: nowrap;
+  }
+  .inputLabel {
+    display: block;
+  }
+  .simAllInputWrapper {
+    width: max-content;
+  }
+  .simAllInputWrapper button {
+    font-size: 0.6rem;
+  }
+  .simAllInputWrapper input {
+    width: 0.7rem;
+    height: 0.7rem;
+  }
+  .extraInputWrapper {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .actionBar {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 0.5rem 1rem;
+  }
+
+  /* Outputs */
+  .log {
+    min-width: 80vw;
+  }
+  .boughtVars table,
+  .boughtVars tr,
+  .boughtVars td {
+    border-collapse: collapse;
+    padding: 0.3rem;
+    text-align: center;
+    font-size: 0.63rem;
+  }
+
+  /* Settings dialog */
+  .settings {
+    width: 95%;
+    --inline-padding: 1.2rem;
+  }
+  .settings input[type="range"] {
+    appearance: none;
+    width: 5rem;
+  }
+  .settings input[type="range"]::-webkit-slider-runnable-track {
+    height: 0.4rem;
+  }
+  .settings input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    height: 0.8rem;
+    width: 0.45rem;
+    margin-top: -0.2rem;
+    background-color: red;
+    outline: 1px solid green;
+  }
+}
