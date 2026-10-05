@@ -1,0 +1,348 @@
+import jsonData from "../Data/data.json" with { type: "json" };
+import { convertTime, formatNumber, isMainTheory, logToExp } from "../Utils/helpers";
+import {
+    qsa,
+    ce,
+    removeAllChilds,
+    downloadString,
+    getTableHeaders,
+    tau,
+    openDialog,
+    bindDialogCloseEvents,
+    hide,
+    show
+} from "../Utils/DOMhelpers";
+import UI from "../UI/elements";
+import { formatDuration } from "../Utils/helpers";
+
+const downloadIcon = '<svg xmlns="http://www.w3.org" width="24" height="24" viewBox="0 0 24 24" ' +
+        'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"' +
+        'class="feather feather-download">\n' +
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>' +
+    '<polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>\n' +
+    '</svg>'
+
+const eyeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ' +
+        'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye">\n' +
+    ' <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path>\n' +
+    ' <circle cx="12" cy="12" r="3"></circle>\n' +
+    '</svg>';
+
+let totalBuys: varBuy[] = [];
+
+// Utils
+function clearTable() {
+    removeAllChilds(UI.outputs.tableBody);
+}
+function setTableClass(cl: ("big" | "small")) {
+    UI.outputs.table.classList.remove("big", "small");
+    UI.outputs.table.classList.add(cl);
+}
+function setTableMode(mode: string) {
+    UI.outputs.table.setAttribute("simMode", mode);
+}
+function getTableMode(): string {
+    return UI.outputs.table.getAttribute("simMode") ?? "";
+}
+function setTableHeaders(...headers: string[]) {
+    removeAllChilds(UI.outputs.tableHeadRow);
+    headers.forEach(header => {
+        const cell = ce("th");
+        cell.innerHTML = header;
+        UI.outputs.tableHeadRow.appendChild(cell);
+    })
+}
+
+/**
+ * Adds a cell to a HTML table
+ * @param row The HTML table to append the cell to
+ * @param content The HTML content of the cell
+ * @param rowspan The rowspan of the cell (default 1)
+ */
+function addTableCell(row: HTMLTableRowElement, content: string, rowspan = 1) {
+    const cell = ce("td");
+    cell.innerHTML = content;
+    if (rowspan > 1) cell.setAttribute("rowspan", String(rowspan));
+    row.appendChild(cell);
+}
+
+/**
+ * Fills an HTML row with empty cells
+ * @param row The HTML row to fill
+ * @param count The number of empty cells to add
+ */
+function fillTableRow(row: HTMLTableRowElement, count: number) {
+    for (let i = 0; i < count; i++) addTableCell(row, "");
+}
+
+function makeVarBuyCsv(arr: varBuy[]): string {
+    let csvTotal = "variable,level,cost,timeStamp\n";
+    for(let item of arr) {
+        csvTotal += `"${item.variable}",${item.level},${logToExp(item.cost, 2)}${getCurrencySymbol(item.symbol)},${convertTime(item.timeStamp)}\n`;
+    }
+    return csvTotal;
+}
+
+function addVarBuyCell(row: HTMLTableRowElement, buys: varBuy[], addToTotal = true, rowspan = 1) {
+    if (addToTotal && UI.settings.totalPurchaseList.checked) {
+        totalBuys.push(...buys);
+        totalBuys.push({variable: "---", level: 0, cost: 0, timeStamp: 0});
+    }
+
+    const cell = ce("td");
+    cell.classList.add("varBuyCell");
+
+    const viewBtn = ce("div");
+    viewBtn.innerHTML = eyeIcon;
+    viewBtn.onclick = () => openVarModal(buys);
+
+    const downloadBtn = ce("a");
+    downloadBtn.innerHTML = downloadIcon;
+    downloadBtn.onclick = () => {
+        const csvOut = makeVarBuyCsv(buys);
+        downloadString(csvOut, "buys.csv");
+    }
+
+    cell.appendChild(viewBtn);
+    cell.appendChild(downloadBtn);
+
+    if (rowspan > 1) cell.setAttribute("rowspan", String(rowspan));
+    row.appendChild(cell);
+}
+
+// Var buy utils
+
+function getCurrencySymbol(value: string | undefined): string {
+    if (value === undefined || value === "rho") return "\u03C1";
+    if (value === "lambda") return "\u03BB";
+    if (value === "delta") return "\u03B4"
+    if (/_/.test(value)) {
+      value = value.replace(/{}/g, "");
+      const split = value.split("_");
+      return `${getCurrencySymbol(split[0])}<sub>${split[1]}</sub>`;
+    }
+    return value;
+  }
+
+/** Highlights MF reset cells */
+function highlightResetCells() {
+  const cells = qsa<HTMLTableCellElement>('.boughtVars tr td:nth-child(1)');
+  cells.forEach(cell => {
+    if (cell.innerText.toLowerCase().includes('reset at')) {
+      cell.classList.add('highlighted');
+    }
+  });
+}
+
+/** Generates and open the var buy list */
+function openVarModal(arr: varBuy[]) {
+  openDialog(UI.buyList.dialog);
+  removeAllChilds(UI.buyList.table);
+  for (let varBuy of arr) {
+    const row = ce<HTMLTableRowElement>("tr");
+    addTableCell(row, varBuy.variable);
+    addTableCell(row, varBuy.level.toString());
+    addTableCell(row, `${logToExp(varBuy.cost, 2)}<span style="margin-left:.1em">${getCurrencySymbol(varBuy.symbol)}</span>`);
+    addTableCell(row, convertTime(varBuy.timeStamp));
+    UI.buyList.table.appendChild(row);
+  }
+  highlightResetCells();
+}
+
+bindDialogCloseEvents(UI.buyList.dialog, UI.buyList.closeBtn);
+
+// Response writers
+
+function writeSingleSimResponse(response: SingleSimResponse) {
+    const res = response.result;
+    const row = ce<HTMLTableRowElement>("tr");
+    addTableCell(row, res.theory);
+    addTableCell(row, res.sigma.toString());
+    addTableCell(row, logToExp(res.lastPubRho ?? res.lastPubTau, 2));
+    addTableCell(row, logToExp(res.pubPointRho ?? res.pubPointTau, 2));
+    addTableCell(row, logToExp(res.deltaTau, 2));
+    addTableCell(row, formatNumber(res.pubMulti));
+    addTableCell(row, res.strat);
+    addTableCell(row, res.tauH == 0 ? "0" : formatNumber(res.tauH));
+    addTableCell(row, convertTime(res.time));
+    addVarBuyCell(row, res.boughtVars);
+    UI.outputs.tableBody.append(row);
+}
+
+function writeChainSimResponse(response: ChainSimResponse) {
+    response.results.forEach(res => writeSingleSimResponse({
+        responseType: "single",
+        result: res
+    }));
+    const labelRow = ce<HTMLTableRowElement>("tr");
+    const resRow = ce<HTMLTableRowElement>("tr");
+
+    fillTableRow(labelRow, 4);
+    fillTableRow(resRow, 4);
+
+    addTableCell(labelRow, "ΔTau Total");
+    addTableCell(resRow, logToExp(response.deltaTau, 2));
+
+    fillTableRow(labelRow, 2);
+    fillTableRow(resRow, 2);
+
+    addTableCell(labelRow, `Average ${tau}/h`);
+    addTableCell(resRow, formatNumber(response.averageRate, 5));
+
+    addTableCell(labelRow, `Total Time`);
+    addTableCell(resRow, convertTime(response.totalTime));
+
+    fillTableRow(labelRow, 1);
+    if(UI.settings.totalPurchaseList.checked) {
+        addVarBuyCell(resRow, totalBuys, false);
+    }
+    else {
+        fillTableRow(resRow, 1);
+    }
+
+    UI.outputs.tableBody.append(labelRow);
+    UI.outputs.tableBody.append(resRow);
+}
+
+function writeStepSimResponse(response: StepSimResponse) {
+    response.results.forEach(res => writeSingleSimResponse({
+        responseType: "single",
+        result: res
+    }));
+    if (UI.settings.totalPurchaseList.checked) {
+        const resRow = ce<HTMLTableRowElement>("tr");
+        fillTableRow(resRow, 8);
+        addTableCell(resRow, "Total");
+        addVarBuyCell(resRow, totalBuys, false);
+        UI.outputs.tableBody.append(resRow);
+    }
+}
+
+function writeSimAllResponse(response: SimAllResponse) {
+    const completeSimAllLine = (row: HTMLTableRowElement, res: simResult) => {
+        addTableCell(row, res.tauH == 0 ? "0" : formatNumber(res.tauH));
+        addTableCell(row, formatNumber(res.pubMulti));
+        addTableCell(row, res.strat);
+        addTableCell(row, convertTime(res.time));
+        addTableCell(row, logToExp(res.deltaTau, 2));
+        addTableCell(row, logToExp(res.pubPointRho ?? res.pubPointTau, 2));
+        addVarBuyCell(row, res.boughtVars);
+    }
+
+    let sets: simAllResult[][] = [[], [], []];
+    response.results.forEach((res, i) => {
+        if (isMainTheory(res.theory)) {
+            sets[0].push(res);
+        }
+        else {
+            if (response.completedCTs === "end" && res.lastPubTau >= 600) {
+                sets[2].push(res);
+            }
+            else sets[1].push(res);
+        }
+    });
+    sets = sets.filter(set => set.length > 0);
+
+    sets.forEach((set, i) => {
+        set.forEach(res => {
+            if (response.stratType == "all") {
+                const rowActive = ce<HTMLTableRowElement>("tr");
+                const rowPassive = ce<HTMLTableRowElement>("tr");
+
+                addTableCell(rowActive, res.theory, 2);
+                addTableCell(rowActive, logToExp(res.lastPubRho ?? res.lastPubTau, 2), 2);
+                addTableCell(rowActive, formatNumber(res.ratio, 4), 2);
+
+                completeSimAllLine(rowActive, res.active);
+                completeSimAllLine(rowPassive, res.idle);
+
+                UI.outputs.tableBody.appendChild(rowActive);
+                UI.outputs.tableBody.appendChild(rowPassive);
+            }
+            else {
+                const uniqueRes = response.stratType == "active" ? res.active : res.idle;
+                const row = ce<HTMLTableRowElement>("tr");
+
+                addTableCell(row, res.theory);
+                addTableCell(row, logToExp(res.lastPubRho ?? res.lastPubTau, 2));
+                completeSimAllLine(row, uniqueRes);
+
+                UI.outputs.tableBody.appendChild(row);
+            }
+        })
+
+        if (i < sets.length - 1) {
+            const bufferRow1 = ce<HTMLTableRowElement>("tr");
+            const bufferRow2 = ce<HTMLTableRowElement>("tr");
+
+            hide(bufferRow1);
+            addTableCell(bufferRow2, "---");
+
+            UI.outputs.tableBody.appendChild(bufferRow1);
+            UI.outputs.tableBody.appendChild(bufferRow2);
+        }
+    })
+}
+
+function writeNoPub(res: NoPubSimResponse): string {
+    const deltaRho = res.finalRho - res.startRho;
+    const multiRatio = res.startMulti > 0 ? res.finalMulti / res.startMulti : 1;
+
+    let out = `=== ${res.theory} No-Pub Simulation Result ===\n\n`;
+    out += `Strategy             : ${res.strat}\n`;
+    out += `Total Time Simulated : ${formatDuration(res.totalTime)} (${res.totalTime.toLocaleString(undefined, { maximumFractionDigits: 1 })}s)\n`;
+    out += `Initial Rho          : e${res.startRho.toFixed(2)}\n`;
+    out += `Final Rho            : e${res.finalRho.toFixed(2)} (Δe${deltaRho.toFixed(2)})\n`;
+    out += `Initial Multiplier   : ${res.startMulti.toExponential(4)}\n`;
+    out += `Final Multiplier     : ${res.finalMulti.toExponential(4)} (x${multiRatio.toExponential(3)})\n\n`;
+
+    out += `--- Rho Step Milestones ---\n`;
+    out += `| ${"Milestone (Rho)".padEnd(16)} | ${"Elapsed Time".padEnd(16)} | ${"Multiplier".padEnd(14)} |\n`;
+    out += `|${"-".repeat(18)}|${"-".repeat(18)}|${"-".repeat(16)}|\n`;
+
+    for (const log of res.stepLogs) {
+        const rhoStr = `e${log.rho.toFixed(2)}`.padEnd(16);
+        const timeStr = formatDuration(log.time).padEnd(16);
+        const multiStr = log.multi.toExponential(3).padEnd(14);
+        out += `| ${rhoStr} | ${timeStr} | ${multiStr} |\n`;
+    }
+
+    return out;
+}
+
+function preparePubTableResponse(response: PubTableResponse) {
+    UI.outputData.pubTable = response.pub_table;
+    UI.outputData.pubTableParams.cap = response.cap;
+    UI.outputData.pubTableParams.step = response.step;
+    UI.outputData.pubTableParams.start = response.start;
+    show(UI.controls.downloadPubTable)
+}
+
+export function writeSimResponse(response: SimResponse) {
+    if(response.responseType == "pub_table") {
+        console.log("Constructed pub table. Total t: ", convertTime(response.pub_table[response.pub_table.length-1][0]));
+        preparePubTableResponse(response);
+        return;
+    }
+    hide(UI.controls.downloadPubTable)
+    const mode = response.responseType;
+
+    if (mode != "single" || getTableMode() != mode) {
+        setTableClass(mode == "all" ? "big" : "small");
+        setTableMode(mode);
+        clearTable();
+    }
+    if (mode === "all") setTableHeaders(...getTableHeaders(response.stratType === "all" ? "all" : "all_one", "html", response.sigma), 'Var Buys')
+    else setTableHeaders(...getTableHeaders("single", "html"), 'Var Buys');
+
+    totalBuys = [];
+
+    switch (mode) {
+        case "single": writeSingleSimResponse(response); break;
+        case "chain": writeChainSimResponse(response); break;
+        case "step": writeStepSimResponse(response); break;
+        case "all": writeSimAllResponse(response); break;
+        case "no_pub": writeNoPub(response); break;
+    }
+}
