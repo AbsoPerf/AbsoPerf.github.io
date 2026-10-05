@@ -1,0 +1,267 @@
+import { global } from "../../Sim/main";
+import { trueFunc } from "../../Utils/functions";
+import { ptDecodeFormat1 } from "../../Utils/ptDecode";
+import Variable from "../../Utils/variable";
+import { ExponentialValue, StepwisePowerSumValue } from "../../Utils/value";
+import { ExponentialCost, FirstFreeCost } from '../../Utils/cost';
+import {
+  l10,
+  subtract,
+  logToExp,
+  getR9multiplier,
+  getLastLevel,
+  getBestResult
+} from "../../Utils/helpers";
+import { traditionalConverter } from "../../Utils/progressConversion";
+import { prepareTable } from "../CTs/helpers/prepareTable";
+import traditionalTheoryClass from "../traditionalTheory";
+
+type theory = "T5";
+
+let activePubTable: Record<string, string> = {}
+
+const converter: ProgressValueConverterRho = traditionalConverter({
+  r9Affected: true,
+  multExponent: 0.159
+});
+
+const T5: TheoryInterface<theory> = {
+  simulate: t5,
+  converter
+};
+
+export default T5;
+
+async function t5(data: theoryData<theory>): Promise<simResult<theory>> {
+  let res;
+  if(data.strat.includes("PT") && (Object.keys(activePubTable).length === 0)) {
+    const {default: rawActivePubTable} = await import("./helpers/table_t5_0_01_overall_coded.json");
+    activePubTable = prepareTable(await ptDecodeFormat1(rawActivePubTable), "00");
+  }
+  if(data.strat.includes("Coast")) {
+    let data2: theoryData<theory> = JSON.parse(JSON.stringify(data));
+    if(data2.strat == "T5Idle2Coast") {
+      data2.strat = "T5IdleCoast";
+    }
+    data2.strat = data2.strat.replace("Coast", "").replace("PT", "") as stratType[theory];
+    const sim1 = new t5Sim(data2);
+    const res1 = await sim1.simulate();
+    const lastQ1 = getLastLevel("q1", res1.boughtVars);
+    const sim2 = new t5Sim(data);
+    sim2.variables[0].setOriginalCap(lastQ1);
+    sim2.variables[0].configureCap(13);
+    let last_c2 = getLastLevel("c2", res1.boughtVars);
+    sim2.variables[3].setOriginalCap(last_c2);
+    sim2.variables[3].configureCap(1);
+    if(data.strat == "T5Idle2Coast") {
+      let last_c1 = getLastLevel("c1", res1.boughtVars) || sim1.variables[2].level;
+      sim2.variables[2].setOriginalCap(last_c1);
+      sim2.variables[2].configureCap(200);
+    }
+    res = await sim2.simulate();
+  }
+  else {
+    const sim = new t5Sim(data);
+    res = await sim.simulate();
+  }
+  return res;
+}
+
+const L10_2_3 = l10(2 / 3);
+const L10_2 = l10(2);
+const L10_1_5 = l10(1.5);
+const L10_E = l10(Math.E);
+
+class t5Sim extends traditionalTheoryClass<theory> {
+  q: number;
+  c2worth: boolean;
+  c2Counter: number;
+  nc3: number;
+
+  getBuyingConditions(): conditionFunction[] {
+    const conditions: Record<stratType[theory], conditionFunction[]> = {
+      T5: [trueFunc, trueFunc, trueFunc, trueFunc, trueFunc],
+      T5Idle: [
+        trueFunc,
+        trueFunc,
+        () => this.maxRho + (this.lastPubRho - 200) / 165 < this.lastPubRho,
+        () => this.c2worth,
+        trueFunc
+      ],
+      T5IdleCoast: [
+        () => this.variables[0].shouldBuy,
+        trueFunc,
+        () => this.maxRho + (this.lastPubRho - 200) / 165 < this.lastPubRho,
+        () => this.variables[3].shouldBuy && this.c2worth,
+        trueFunc
+      ],
+      T5Idle2Coast: [
+        () => this.variables[0].shouldBuy,
+        trueFunc,
+        () => this.variables[2].shouldBuy,
+        () => this.variables[3].shouldBuy && this.c2worth,
+        trueFunc
+      ],
+      T5AI2: [
+        () => this.variables[0].cost + l10(3 + (this.variables[0].level % 10))
+          <= Math.min(this.variables[1].cost, this.variables[3].cost, this.milestones[2] > 0 ? this.variables[4].cost : 1000),
+        trueFunc,
+        () => this.q + L10_1_5 < this.variables[3].value + this.variables[4].value * (1 + 0.05 * this.milestones[2]) || !this.c2worth,
+        () => this.c2worth,
+        trueFunc,
+      ],
+      T5AI2Coast: [
+        () => this.variables[0].shouldBuy && (this.variables[0].cost + l10(3 + (this.variables[0].level % 10))
+            <= Math.min(this.variables[1].cost, this.variables[3].cost, this.milestones[2] > 0 ? this.variables[4].cost : 1000)),
+        trueFunc,
+        () => this.q + L10_1_5 < this.variables[3].value + this.variables[4].value * (1 + 0.05 * this.milestones[2]) || !this.c2worth,
+        () => this.variables[3].shouldBuy && this.c2worth,
+        trueFunc,
+      ],
+      T5AI2PT: [
+        () => this.variables[0].cost + l10(3 + (this.variables[0].level % 10))
+            <= Math.min(this.variables[1].cost, this.variables[3].cost, this.milestones[2] > 0 ? this.variables[4].cost : 1000),
+        trueFunc,
+        () => this.q + L10_1_5 < this.variables[3].value + this.variables[4].value * (1 + 0.05 * this.milestones[2]) || !this.c2worth,
+        () => this.c2worth,
+        trueFunc,
+      ],
+      T5AI2PTCoast: [
+        () => this.variables[0].shouldBuy && (this.variables[0].cost + l10(3 + (this.variables[0].level % 10))
+            <= Math.min(this.variables[1].cost, this.variables[3].cost, this.milestones[2] > 0 ? this.variables[4].cost : 1000)),
+        trueFunc,
+        () => this.q + L10_1_5 < this.variables[3].value + this.variables[4].value * (1 + 0.05 * this.milestones[2]) || !this.c2worth,
+        () => this.variables[3].shouldBuy && this.c2worth,
+        trueFunc,
+      ],
+    };
+    return conditions[this.strat];
+  }
+  getVariableAvailability(): conditionFunction[] {
+    return [
+        trueFunc,
+        trueFunc,
+        trueFunc,
+        trueFunc,
+        () => this.milestones[1] > 0,
+    ];
+  }
+  getMilestonePriority(): number[] {
+    return [1, 0, 2];
+  }
+  /** Solves q using the differential equation result */
+  calculateQ(ic1: number, ic2: number, ic3: number): number{
+    const qcap = ic2 + ic3
+    const gamma = 10 ** (ic1 + ic3 - ic2) // q growth speed characteristic parameter
+    const adjust = this.q - subtract(qcap, this.q); // initial condition
+    const sigma = 10 ** (adjust + gamma * this.dt * L10_E)
+    let newq: number;
+    // Approximation when q << qcap
+    if (sigma < 1e-30){
+      newq = qcap + adjust + gamma * this.dt * L10_E;
+    }
+    // Normal resolution
+    else {
+      newq = qcap - l10(1 + 1 / sigma);
+    }
+    return Math.min(newq, qcap)
+  }
+  constructor(data: theoryData<theory>) {
+    super(data, converter);
+    this.q = 0;
+    this.pubUnlockRho = 7;
+    this.milestoneUnlockSteps = 25;
+    //milestones  [q1exp,c3term,c3exp]
+    this.milestonesMax = [3, 1, 2];
+    this.variables = [
+      new Variable({ currency: this.rho, name: "q1", cost: new FirstFreeCost(new ExponentialCost(10, 1.61328)), valueScaling: new StepwisePowerSumValue() }),
+      new Variable({ currency: this.rho, name: "q2", cost: new ExponentialCost(15, 64), valueScaling: new ExponentialValue(2) }),
+      new Variable({ currency: this.rho, name: "c1", cost: new ExponentialCost(1e6, 1.18099), valueScaling: new StepwisePowerSumValue(2, 10, 1) }),
+      new Variable({ currency: this.rho, name: "c2", cost: new ExponentialCost(75, 4.53725), valueScaling: new ExponentialValue(2) }),
+      new Variable({ currency: this.rho, name: "c3", cost: new ExponentialCost(1e3, 8.85507e7), valueScaling: new ExponentialValue(2) }),
+    ];
+    this.c2worth = true;
+    this.c2Counter = 0;
+    this.nc3 = 0;
+    this.updateMilestones();
+    if(this.strat.includes("PT")) {
+      if (this.lastPubRho <= 1999)
+      {
+        let pubSeek = (Math.round(this.lastPubRho * 100) / 100).toFixed(4);
+        let nextRho = parseFloat(activePubTable[pubSeek]);
+        this.doSimEndConditions = () => false;
+        this.pubConditions.push(() => this.maxRho >= nextRho);
+      }
+    }
+  }
+  async simulate(): Promise<simResult<theory>> {
+    while (!this.endSimulation()) {
+      if (!global.simulating) break;
+      this.tick();
+      this.updateSimStatus();
+      if (this.lastPubRho < 150) this.updateMilestones();
+      this.c2Counter = 0;
+      this.buyVariables();
+      if(this.variables[0].shouldFork) await this.doForkVariable(0);
+      if(this.variables[2].shouldFork) await this.doForkVariable(2);
+      if(this.variables[3].shouldFork) await this.doForkVariable(3);
+      this.pubTableCollector.collectData(this);
+    }
+    this.trimBoughtVars();
+    let stratExtra = (
+        this.strat.includes("T5Idle") && !this.strat.includes("Idle2")
+    ) ? " " + logToExp(this.variables[2].cost, 1) : "";
+    if(this.strat.includes("Coast")) {
+      stratExtra += this.variables[0].prepareExtraForCap(getLastLevel("q1", this.boughtVars))
+      stratExtra += this.variables[3].prepareExtraForCap(getLastLevel("c2", this.boughtVars))
+    }
+    if(this.strat.includes("Idle2")) {
+      let c1_last = getLastLevel("c1", this.boughtVars);
+      if(c1_last === 0) {
+        c1_last = this.variables[2].level;
+      }
+      stratExtra += this.variables[2].prepareExtraForCap(c1_last)
+    }
+    return getBestResult(this.createResult(stratExtra), this.bestForkRes);
+  }
+  tick() {
+    const vq1 = this.variables[0].value * (1 + 0.05 * this.milestones[0]);
+    const vc3 = this.milestones[1] > 0 ? this.variables[4].value * (1 + 0.05 * this.milestones[2]) : 0;
+
+    this.q = this.calculateQ(this.variables[2].value, this.variables[3].value, vc3);
+    const rhodot = vq1 + this.variables[1].value + this.q;
+    this.rho.add(rhodot + this.totMult + l10(this.dt));
+
+    this.nc3 = vc3;
+    const iq = this.calculateQ(this.variables[2].value, this.variables[3].value, vc3);
+    this.c2worth = iq >= this.variables[3].value + this.nc3 + L10_2_3;
+  }
+  onVariablePurchased(id: number): void {
+    if (id == 3) {
+      this.c2Counter++;
+      const iq = this.calculateQ(this.variables[2].value, this.variables[3].value + L10_2 * this.c2Counter, this.nc3);
+      this.c2worth = iq >= this.variables[3].value + L10_2 * this.c2Counter + this.variables[4].value * (1 + 0.05 * this.milestones[2]) + L10_2_3;
+    }
+    if(
+        (id === 0 || id === 2 || id === 3) &&
+        this.strat.includes("Coast") &&
+        this.variables[id].shouldBuy &&
+        this.variables[id].coastingCapReached()
+        // (this.variables[id].underOriginalCap() || this.maxRho >= 1000)
+    ) {
+      this.variables[id].shouldFork = true;
+    }
+  }
+  copyFrom(other: this) {
+    super.copyFrom(other);
+    this.q = other.q;
+    this.nc3 = other.nc3;
+    this.c2worth = other.c2worth;
+    this.c2Counter = other.c2Counter;
+  }
+  copy() {
+    let copySim = new t5Sim(this.getDataForCopy());
+    copySim.copyFrom(this);
+    return copySim;
+  }
+}
