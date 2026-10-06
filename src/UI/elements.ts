@@ -29,7 +29,7 @@ const UI = {
         noPubTimeWrapper: qs(".noPubTimeWrapper"),
         noPubTimeInput: qs<HTMLInputElement>(".noPubTimeInput"),
         noPubStepWrapper: qs(".noPubStepWrapper"),
-        noPubStepInput: qs<HTMLInputElement>(".noPubStepInput")
+        noPubStepInput: qs<HTMLInputElement>(".noPubStepInput"),
 
         simAllInputWrapper: qs(".simAllInputWrapper"),
         saveDistBtn: qs<HTMLButtonElement>(".saveDistBtn"),
