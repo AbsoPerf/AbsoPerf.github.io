@@ -59,7 +59,7 @@ async function simulateOnce<T extends theoryType, S extends stratType[T]>(
     strat: S,
     stratSpecificInputs: StratSpecificInputRecord<T, S>,
     query: Omit<SingleSimQuery<T, stratType[T]>, "strat" | "stratSpecificInputs"> & { targetTime?: number }
-): Promise<simResult> {
+): Promise<simResult<T>> {
     const data: theoryData<T, S> = {
         theory: query.theory,
         specificInputs: query.theorySpecificInputs,
