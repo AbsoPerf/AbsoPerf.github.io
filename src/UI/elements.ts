@@ -26,6 +26,11 @@ const UI = {
         extraInputWrapper: qs(".extraInputWrapper"),
         extraInputDesc: qs(".extraInputDescription"),
 
+        noPubTimeWrapper: qs(".noPubTimeWrapper"),
+        noPubTimeInput: qs<HTMLInputElement>(".noPubTimeInput"),
+        noPubStepWrapper: qs(".noPubStepWrapper"),
+        noPubStepInput: qs<HTMLInputElement>(".noPubStepInput")
+
         simAllInputWrapper: qs(".simAllInputWrapper"),
         saveDistBtn: qs<HTMLButtonElement>(".saveDistBtn"),
         semiIdleToggle: qs<HTMLInputElement>(".semiIdleToggle"),
@@ -51,10 +56,6 @@ const UI = {
         clearInputsBtn: qs(".clearInputsBtn"),
         simulateBtn: qs(".simulateBtn"),
 
-        noPubTimeWrapper: qs(".noPubTimeWrapper"),
-        noPubTimeInput: qs<HTMLInputElement>(".noPubTimeInput"),
-        noPubStepWrapper: qs(".noPubStepWrapper"),
-        noPubStepInput: qs<HTMLInputElement>(".noPubStepInput")
     },
     outputs: {
         log: qs(".log"),
