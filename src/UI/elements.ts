@@ -49,12 +49,7 @@ const UI = {
         downloadPubTable: qs(".downloadPubTable"),
         clearResultsBtn: qs(".clearResultsBtn"),
         clearInputsBtn: qs(".clearInputsBtn"),
-        simulateBtn: qs(".simulateBtn"),
-
-        noPubTimeWrapper: qs(".noPubTimeWrapper"),
-        noPubTimeInput: qs<HTMLInputElement>(".noPubTimeInput"),
-        noPubStepWrapper: qs(".noPubStepWrapper"),
-        noPubStepInput: qs<HTMLInputElement>(".noPubStepInput")
+        simulateBtn: qs(".simulateBtn")
     },
     outputs: {
         log: qs(".log"),

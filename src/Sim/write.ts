@@ -218,13 +218,6 @@ function writeStepSimResponse(response: StepSimResponse) {
     }
 }
 
-function writeNoPubResponse(response: NoPubSimResponse) {
-    response.results.forEach(res => writeSingleSimResponse({
-        responseType: "single",
-        result: res
-    }));
-}
-
 function writeSimAllResponse(response: SimAllResponse) {
     const completeSimAllLine = (row: HTMLTableRowElement, res: simResult) => {
         addTableCell(row, res.tauH == 0 ? "0" : formatNumber(res.tauH));
@@ -323,6 +316,5 @@ export function writeSimResponse(response: SimResponse) {
         case "chain": writeChainSimResponse(response); break;
         case "step": writeStepSimResponse(response); break;
         case "all": writeSimAllResponse(response); break;
-        case "no_pub": writeNoPubResponse(response); break;
     }
 }

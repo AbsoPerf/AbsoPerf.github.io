@@ -49,29 +49,15 @@ declare global {
         timeStamp: number;
     }
     
-    // type theoryData<T extends theoryType, S extends stratType[T] = stratType[T]> = {
-    //     theory: T;
-    //     specificInputs: SpecificInputRecord<T>;
-    //     stratSpecificInputs: StratSpecificInputRecord<T, S>;
-    //     sigma: number;
-    //     input: ProgressValue;
-    //     strat: S;
-    //     cap?: ProgressValue;
-    //     recursionValue: null | number | number[];
-    //     settings: Settings;
-    // }
-
-    // src/types/core.d.ts의 theoryData 정의에 targetTime?: number; 추가
     type theoryData<T extends theoryType, S extends stratType[T] = stratType[T]> = {
         theory: T;
-        strat: S;
-        sigma: number;
-        input: ProgressValue;
-        cap?: ProgressValue;
-        targetTime?: number; // <-- No Pub 모드 목표 시간(초 단위) 추가
-        recursionValue: any;
         specificInputs: SpecificInputRecord<T>;
         stratSpecificInputs: StratSpecificInputRecord<T, S>;
+        sigma: number;
+        input: ProgressValue;
+        strat: S;
+        cap?: ProgressValue;
+        recursionValue: null | number | number[];
         settings: Settings;
     }
     

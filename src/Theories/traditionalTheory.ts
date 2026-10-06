@@ -201,10 +201,6 @@ export default abstract class
    * Creates a sim result from the sim class
    * @param stratExtra Extra string to append to the "strat" column
    */
-/**
-   * Creates a sim result from the sim class
-   * @param stratExtra Extra string to append to the "strat" column
-   */
   createResult(stratExtra: string = ""): simResultRho<theory> {
     const startTau = this.converter.convertTo(
       this.lastPub,
@@ -212,17 +208,11 @@ export default abstract class
       this.sigma
     );
     const startRho = this.lastPubRho;
-
-    // No Pub 모드 판별: targetTime이 있으면 피크 시점이 아닌 현재 종료 시점의 값을 사용
-    const isNoPub = this.targetTime !== undefined;
-    const pubRho = isNoPub ? this.rho.value : this.pubRho;
     const pubTau = this.converter.convertTo({
       valueType: "rho",
-      value: pubRho
+      value: this.pubRho
     }, "tau");
-    const finalTime = isNoPub ? this.t : this.pubT;
-    const deltaTau = pubTau - startTau;
-
+    const pubRho = this.pubRho;
     return {
       theory: this.theory,
       sigma: this.sigma,
@@ -230,12 +220,11 @@ export default abstract class
       lastPubRho: startRho,
       pubPointTau: pubTau,
       pubPointRho: pubRho,
-      deltaTau: deltaTau,
+      deltaTau: pubTau - startTau,
       pubMulti: 10 ** (this.getTotMultFromRho(pubRho) - this.totMult),
       strat: this.strat as String + stratExtra,
-      // No Pub 모드일 때는 총 소요 시간 기준 평균 rate, 일반 모드일 때는 피크 maxTauH 유지
-      tauH: isNoPub ? (finalTime > 0 ? deltaTau / (finalTime / 3600) : 0) : this.maxTauH,
-      time: finalTime,
+      tauH: this.maxTauH,
+      time: this.pubT,
       boughtVars: this.boughtVars
     }
   }

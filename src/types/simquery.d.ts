@@ -88,30 +88,13 @@ type StepChainQuery<T extends theoryType, S extends FullStratType<T> = FullStrat
     hardCap: boolean;
 }
 
-// NoPubSimQuery 정의 추가 (TimeSimQuery / StepSimQuery와 동일한 구조)
-type NoPubSimQuery<T extends theoryType = theoryType> = {
-    queryType: "no_pub";
-    theory: T;
-    theorySpecificInputs: SpecificInputRecord<T>;
-    stratSpecificInputs: StratSpecificInputRecord<T, stratType[T]>;
-    strat: FullStratType<T>;
-    sigma: number;
-    input: ProgressValue;
-    time: number;
-    step?: number;
-    targetTime?: number;
-    settings: Settings;
-}
-
-// 하단 SimQuery 유니온 타입에 | NoPubSimQuery 추가
-type SimQuery =
-    | SimAllQuery
-    | SingleSimQuery
-    | ChainSimQuery
-    | StepSimQuery
-    | ComparisonSimQuery
-    | PubTableSimQuery
-    | AmountSimQuery
-    | TimeSimQuery
-    | StepChainQuery
-    | NoPubSimQuery;
+type SimQuery = 
+    SingleSimQuery<any>
+    | ChainSimQuery<any>
+    | StepSimQuery<any>
+    | ComparisonSimQuery<any>
+    | AmountSimQuery<any>
+    | TimeSimQuery<any>
+    | SimAllQuery 
+    | StepChainQuery<any>
+    | PubTableSimQuery;

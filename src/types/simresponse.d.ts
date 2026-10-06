@@ -32,17 +32,9 @@ completedCTs: SettingsCompletedCTsMode;
 results: simAllResult[];
 }
 
-// NoPubSimResponse 정의 추가 (StepSimResponse와 동일한 형식)
-type NoPubSimResponse = {
-    responseType: "no_pub";
-    results: simResult[];
-}
-
-// 하단 SimResponse 유니온 타입에 | NoPubSimResponse 추가
-type SimResponse =
-    | SimAllResponse
-    | SingleSimResponse
-    | ChainSimResponse
-    | StepSimResponse
-    | PubTableResponse
-    | NoPubSimResponse;
+type SimResponse = 
+    SingleSimResponse 
+    | ChainSimResponse 
+    | StepSimResponse 
+    | SimAllResponse 
+    | PubTableResponse;

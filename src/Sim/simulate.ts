@@ -58,8 +58,8 @@ const theoryInterface: { [theory in theoryType]: TheoryInterface<theory> } = {
 async function simulateOnce<T extends theoryType, S extends stratType[T]>(
     strat: S,
     stratSpecificInputs: StratSpecificInputRecord<T, S>,
-    query: Omit<SingleSimQuery<T, stratType[T]>, "strat" | "stratSpecificInputs"> & { targetTime?: number }
-): Promise<simResult> {
+    query: Omit<SingleSimQuery<T, stratType[T]>, "strat" | "stratSpecificInputs">
+): Promise<simResult<T>> {
     const data: theoryData<T, S> = {
         theory: query.theory,
         specificInputs: query.theorySpecificInputs,
@@ -68,7 +68,6 @@ async function simulateOnce<T extends theoryType, S extends stratType[T]>(
         input: query.input,
         strat,
         cap: query.cap,
-        targetTime: query.targetTime, // targetTime 전달
         recursionValue: null,
         settings: query.settings
     }
@@ -549,49 +548,6 @@ async function stepChainSim<T extends theoryType>(query: StepChainQuery<T>): Pro
     }
 }
 
-async function noPubSim<T extends theoryType>(query: NoPubSimQuery<T>): Promise<NoPubSimResponse> {
-    const converter = theoryInterface[query.theory].converter;
-    const strats = query.strat == "Best Active"
-        || query.strat == "Best Overall"
-        || query.strat == "Best Semi-Idle"
-        || query.strat == "Best Idle"
-        ? getStrats(
-            query.theory,
-            converter.convertTo(query.input, "tau", query.sigma),
-            converter.supportsRho ? converter.convertTo(query.input, "rho", query.sigma) : 0,
-            query.strat,
-            ""
-        )
-        : [query.strat];
-
-    let bestRes = defaultResult();
-
-    for (let strat of strats) {
-        if (!global.simulating) break;
-        UI.outputs.log.textContent = `Simulating ${String(strat)}...`; // 1. String()으로 감싸기
-        await refreshDOMEventLoop();
-        const res = await simulateOnce(
-            strat,
-            query.stratSpecificInputs,
-            {
-                queryType: "single", // 2. SingleSimQuery 규격에 맞게 "single" 지정
-                theory: query.theory,
-                theorySpecificInputs: query.theorySpecificInputs,
-                sigma: query.sigma,
-                input: query.input,
-                settings: query.settings,
-                targetTime: query.time // No Pub 목표 시간 전달
-            }
-        );
-        bestRes = getBestResult(bestRes, res);
-    }
-
-    return {
-        responseType: "no_pub",
-        results: [bestRes] // 3. <T> 제거 (simResult는 제네릭이 아님)
-    };
-}
-
 export async function simulate(query: SimQuery): Promise<SimResponse> {
     switch (query.queryType) {
         case "single": return await singleSim(query);
@@ -603,7 +559,6 @@ export async function simulate(query: SimQuery): Promise<SimResponse> {
         case "pub_table": return await pubTableSim(query);
         case "amount": return await amountSim(query);
         case "time": return await timeSim(query);
-        case "no_pub": return await noPubSim(query); // <-- 분기 추가
         default: {
             console.log(query);
             throw "Unimplemented";

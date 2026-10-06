@@ -124,13 +124,6 @@ function modeUpdate(): void {
 
   if (newMode === "Time diff.") show(UI.controls.timeDiffWrapper);
 
-  if (newMode === "No Pub") {
-    hide(UI.controls.capInputWrapper);
-    hide(UI.controls.hardCapWrapper);
-    show(UI.controls.extraInputWrapper);
-    show(UI.controls.extraInput);
-  }
-
   populateSingleSimFields();
 }
 
