@@ -1058,7 +1058,7 @@
     "<t1> [t1], ... , <t8> [t8] or <wsp> [wsp], ... , <bap> [bap]",
     "",
     "<sigma 1> <sigma 2> [ct y/n] [idle strats only y/n]",
-    "<Number>"
+    "<Number>",
     "<Number>",
     "<Number>[ydhm]+ (e.g. 1d 12h, 45m, 3600s)"
   ],
