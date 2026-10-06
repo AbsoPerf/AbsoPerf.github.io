@@ -58,8 +58,8 @@ const theoryInterface: { [theory in theoryType]: TheoryInterface<theory> } = {
 async function simulateOnce<T extends theoryType, S extends stratType[T]>(
     strat: S,
     stratSpecificInputs: StratSpecificInputRecord<T, S>,
-    query: Omit<SingleSimQuery<T, stratType[T]>, "strat" | "stratSpecificInputs">
-): Promise<simResult<T>> {
+    query: Omit<SingleSimQuery<T, stratType[T]>, "strat" | "stratSpecificInputs"> & { targetTime?: number }
+): Promise<simResult> {
     const data: theoryData<T, S> = {
         theory: query.theory,
         specificInputs: query.theorySpecificInputs,
@@ -68,6 +68,7 @@ async function simulateOnce<T extends theoryType, S extends stratType[T]>(
         input: query.input,
         strat,
         cap: query.cap,
+        targetTime: query.targetTime, // targetTime 전달
         recursionValue: null,
         settings: query.settings
     }
@@ -548,84 +549,46 @@ async function stepChainSim<T extends theoryType>(query: StepChainQuery<T>): Pro
     }
 }
 
-// simulate.ts 상단에 import된 각 Theory 클래스를 매핑합니다.
-const theories: Record<string, any> = {
-    T1, T2, T3, T4, T5, T6, T7, T8,
-    WSP, SL, EF, CSR2, RZ, FI, BaP, FP, MF,
-    BD, BT, FS, ILC, NLI, TC
-};
+async function noPubSim<T extends theoryType>(query: NoPubSimQuery<T>): Promise<NoPubSimResponse> {
+    const converter = theoryInterface[query.theory].converter;
+    const strats = query.strat == "Best Active"
+        || query.strat == "Best Overall"
+        || query.strat == "Best Semi-Idle"
+        || query.strat == "Best Idle"
+        ? getStrats(
+            query.theory,
+            converter.convertTo(query.input, "tau", query.sigma),
+            converter.supportsRho ? converter.convertTo(query.input, "rho", query.sigma) : 0,
+            query.strat,
+            ""
+        )
+        : [query.strat];
 
-async function simulateNoPub(query: NoPubSimQuery<any>): Promise<NoPubSimResponse> {
-    const sim = new (theories[query.theory] as any)();
+    let bestRes = defaultResult();
 
-    sim.reset();
-    sim.setSettings(query.settings);
-    sim.setStrat(query.strat);
-    sim.setSigma(query.sigma);
-
-    if (query.theorySpecificInputs) {
-        sim.setTheorySpecificInputs(query.theorySpecificInputs);
-    }
-    if (query.stratSpecificInputs) {
-        sim.setStratSpecificInputs(query.stratSpecificInputs);
-    }
-
-    const startRho = query.input.value;
-    sim.curRho = startRho;
-    sim.maxRho = startRho;
-    sim.totTime = 0;
-
-    const startMulti = sim.getMultiplier();
-    const targetTime = query.time > 0 ? query.time : 3600;
-    const stepInterval = query.step > 0 ? query.step : 5;
-    let nextStepRho = startRho + stepInterval;
-
-    const stepLogs: NoPubStepLog[] = [
-        {
-            rho: startRho,
-            time: 0,
-            multi: startMulti
-        }
-    ];
-
-    const dt = query.settings.dt;
-    const ddt = query.settings.ddt;
-    let simulatedTime = 0;
-
-    // Pub 없이 Time 동안 tick만 계속 누적
-    while (simulatedTime < targetTime) {
-        const currentDt = Math.min(dt, targetTime - simulatedTime);
-
-        sim.buy();
-        sim.tick(currentDt, ddt);
-        simulatedTime += currentDt;
-
-        const currentRho = sim.curRho;
-
-        // rho가 step 단위(예: 5)를 돌파할 때마다 기록
-        if (currentRho >= nextStepRho) {
-            stepLogs.push({
-                rho: currentRho,
-                time: simulatedTime,
-                multi: sim.getMultiplier()
-            });
-
-            while (nextStepRho <= currentRho) {
-                nextStepRho += stepInterval;
+    for (let strat of strats) {
+        if (!global.simulating) break;
+        UI.outputs.log.textContent = `Simulating ${String(strat)}...`; // 1. String()으로 감싸기
+        await refreshDOMEventLoop();
+        const res = await simulateOnce(
+            strat,
+            query.stratSpecificInputs,
+            {
+                queryType: "single", // 2. SingleSimQuery 규격에 맞게 "single" 지정
+                theory: query.theory,
+                theorySpecificInputs: query.theorySpecificInputs,
+                sigma: query.sigma,
+                input: query.input,
+                settings: query.settings,
+                targetTime: query.time // No Pub 목표 시간 전달
             }
-        }
+        );
+        bestRes = getBestResult(bestRes, res);
     }
 
     return {
-        responseType: "no_pub", // <-- queryType 대신 responseType 사용
-        theory: query.theory,
-        strat: query.strat,
-        startRho,
-        finalRho: sim.curRho,
-        startMulti,
-        finalMulti: sim.getMultiplier(),
-        totalTime: simulatedTime,
-        stepLogs
+        responseType: "no_pub",
+        results: [bestRes] // 3. <T> 제거 (simResult는 제네릭이 아님)
     };
 }
 
@@ -637,10 +600,10 @@ export async function simulate(query: SimQuery): Promise<SimResponse> {
         case "comparison": return await comparisonSim(query);
         case "all": return await simAll(query);
         case "step_chain": return await stepChainSim(query);
-        case "no_pub": return await simulateNoPub(query); // <-- 추가
         case "pub_table": return await pubTableSim(query);
         case "amount": return await amountSim(query);
         case "time": return await timeSim(query);
+        case "no_pub": return await noPubSim(query); // <-- 분기 추가
         default: {
             console.log(query);
             throw "Unimplemented";

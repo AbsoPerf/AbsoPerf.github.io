@@ -13,7 +13,6 @@ import {
     show
 } from "../Utils/DOMhelpers";
 import UI from "../UI/elements";
-import { formatDuration } from "../Utils/helpers";
 
 const downloadIcon = '<svg xmlns="http://www.w3.org" width="24" height="24" viewBox="0 0 24 24" ' +
         'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"' +
@@ -219,6 +218,13 @@ function writeStepSimResponse(response: StepSimResponse) {
     }
 }
 
+function writeNoPubResponse(response: NoPubSimResponse) {
+    response.results.forEach(res => writeSingleSimResponse({
+        responseType: "single",
+        result: res
+    }));
+}
+
 function writeSimAllResponse(response: SimAllResponse) {
     const completeSimAllLine = (row: HTMLTableRowElement, res: simResult) => {
         addTableCell(row, res.tauH == 0 ? "0" : formatNumber(res.tauH));
@@ -285,32 +291,6 @@ function writeSimAllResponse(response: SimAllResponse) {
     })
 }
 
-function writeNoPub(res: NoPubSimResponse): string {
-    const deltaRho = res.finalRho - res.startRho;
-    const multiRatio = res.startMulti > 0 ? res.finalMulti / res.startMulti : 1;
-
-    let out = `=== ${res.theory} No-Pub Simulation Result ===\n\n`;
-    out += `Strategy             : ${res.strat}\n`;
-    out += `Total Time Simulated : ${formatDuration(res.totalTime)} (${res.totalTime.toLocaleString(undefined, { maximumFractionDigits: 1 })}s)\n`;
-    out += `Initial Rho          : e${res.startRho.toFixed(2)}\n`;
-    out += `Final Rho            : e${res.finalRho.toFixed(2)} (Δe${deltaRho.toFixed(2)})\n`;
-    out += `Initial Multiplier   : ${res.startMulti.toExponential(4)}\n`;
-    out += `Final Multiplier     : ${res.finalMulti.toExponential(4)} (x${multiRatio.toExponential(3)})\n\n`;
-
-    out += `--- Rho Step Milestones ---\n`;
-    out += `| ${"Milestone (Rho)".padEnd(16)} | ${"Elapsed Time".padEnd(16)} | ${"Multiplier".padEnd(14)} |\n`;
-    out += `|${"-".repeat(18)}|${"-".repeat(18)}|${"-".repeat(16)}|\n`;
-
-    for (const log of res.stepLogs) {
-        const rhoStr = `e${log.rho.toFixed(2)}`.padEnd(16);
-        const timeStr = formatDuration(log.time).padEnd(16);
-        const multiStr = log.multi.toExponential(3).padEnd(14);
-        out += `| ${rhoStr} | ${timeStr} | ${multiStr} |\n`;
-    }
-
-    return out;
-}
-
 function preparePubTableResponse(response: PubTableResponse) {
     UI.outputData.pubTable = response.pub_table;
     UI.outputData.pubTableParams.cap = response.cap;
@@ -343,6 +323,6 @@ export function writeSimResponse(response: SimResponse) {
         case "chain": writeChainSimResponse(response); break;
         case "step": writeStepSimResponse(response); break;
         case "all": writeSimAllResponse(response); break;
-        case "no_pub": writeNoPub(response); break;
+        case "no_pub": writeNoPubResponse(response); break;
     }
 }

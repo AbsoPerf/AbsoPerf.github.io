@@ -40,6 +40,7 @@ export default abstract class
   ticks: number;
   /** previous milestone count */
   prevMilestoneCount: number;
+  targetTime?: number; // <-- 필드 선언 추가
 
   // Variables
   /** List of variables */
@@ -127,6 +128,7 @@ export default abstract class
     this.ddt = this.settings.ddt;
     this.t = 0;
     this.ticks = 0;
+    this.targetTime = data.targetTime;
 
     //initialize variables
     this.variables = [];
@@ -160,6 +162,7 @@ export default abstract class
     this.ddt = other.ddt;
     this.t = other.t;
     this.ticks = other.ticks;
+    this.targetTime = other.targetTime;
 
     this.variables = other.variables.map((v, i) => v.copy(this.variables[i].currency));
     this.boughtVars = [...other.boughtVars];
@@ -202,6 +205,9 @@ export default abstract class
    * @returns true if it will break out of the simulation loop
    */
   endSimulation(): boolean {
+    if (this.targetTime !== undefined) {
+      return this.t >= this.targetTime;
+    }
     return this.evaluateForcedPubConditions() && (this.evaluatePubConditions() || (this.doSimEndConditions() && this.evaluateSimEndConditions()));
   }
 

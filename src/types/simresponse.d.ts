@@ -32,32 +32,17 @@ completedCTs: SettingsCompletedCTsMode;
 results: simAllResult[];
 }
 
-type NoPubStepLog = {
-    rho: number;
-    time: number;
-    multi: number;
-}
-
+// NoPubSimResponse 정의 추가 (StepSimResponse와 동일한 형식)
 type NoPubSimResponse = {
     responseType: "no_pub";
-    theory: theoryType;
-    strat: string;
-    startRho: number;
-    finalRho: number;
-    startMulti: number;
-    finalMulti: number;
-    totalTime: number;
-    stepLogs: NoPubStepLog[];
+    results: simResult[];
 }
 
-type SimResponse = 
-    SingleSimResponse
+// 하단 SimResponse 유니온 타입에 | NoPubSimResponse 추가
+type SimResponse =
+    | SimAllResponse
+    | SingleSimResponse
     | ChainSimResponse
     | StepSimResponse
-    | ComparisonSimResponse
-    | AmountSimResponse
-    | TimeSimResponse
-    | SimAllResponse
-    | StepChainResponse
-    | PubTableSimResponse
+    | PubTableResponse
     | NoPubSimResponse;

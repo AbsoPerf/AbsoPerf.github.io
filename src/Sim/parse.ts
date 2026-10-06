@@ -1,5 +1,5 @@
 import jsonData from "../Data/data.json" with { type: "json" };
-import { getTheories, getTheoryFromIndex, isMainTheory, parseExponentialValue, parseTimeString } from "../Utils/helpers";
+import { getTheories, getTheoryFromIndex, isMainTheory, parseExponentialValue } from "../Utils/helpers";
 import UI from "../UI/elements";
 
 type ParsedSpecificInput<T extends theoryType> = {
@@ -355,6 +355,55 @@ function parseTimeSim<T extends theoryType>(): TimeSimQuery<T> {
     }
 }
 
+function parseNoPubSim<T extends theoryType>(): NoPubSimQuery<T> {
+    const theory = UI.controls.theorySelector.value as T;
+    const strat = UI.controls.stratSelector.value as FullStratType<T>;
+    const sigma = parseSigma(isMainTheory(theory));
+    const timeStr = UI.controls.extraInput.value.trim();
+    
+    // y, d, h, m, s 단위 파싱
+    const timeComponents = timeStr.matchAll(/(\d+)([ydhms])/g);
+    let time = 0;
+    for (let component of timeComponents) {
+        switch (component[2]) {
+            case 'y':
+                time += parseInt(component[1]) * 3600 * 24 * 365;
+                break;
+            case 'd':
+                time += parseInt(component[1]) * 3600 * 24;
+                break;
+            case 'h':
+                time += parseInt(component[1]) * 3600;
+                break;
+            case 'm':
+                time += parseInt(component[1]) * 60;
+                break;
+            case 's':
+                time += parseInt(component[1]);
+                break;
+        }
+    }
+    // 단위 접미사가 없는 순수 숫자(초) 입력 처리
+    if (time === 0) {
+        time = parseFloat(timeStr) || 0;
+    }
+    if (time <= 0) {
+        throw "Invalid time value. Time must be greater than 0 (e.g. 1d 12h, 45m, 3600s).";
+    }
+
+    return {
+        queryType: "no_pub",
+        theory,
+        theorySpecificInputs: parseTheorySpecificInputs(),
+        stratSpecificInputs: parseStratSpecificInputs(strat),
+        strat,
+        sigma,
+        input: parseCurrency(UI.controls.currencyInput.value, theory),
+        time,
+        settings: parseSettings()
+    };
+}
+
 function parseStepChainSim<T extends theoryType>(): StepChainQuery<T> {
     const theory = UI.controls.theorySelector.value as T;
     const strat = UI.controls.stratSelector.value as FullStratType<T>;
@@ -371,37 +420,6 @@ function parseStepChainSim<T extends theoryType>(): StepChainQuery<T> {
         cap: parseCurrency(UI.controls.capInput.value, theory),
         step: parseExponentialValue(UI.controls.extraInput.value),
         hardCap: UI.controls.hardCap.checked,
-        settings: parseSettings()
-    }
-}
-
-function parseNoPubSim<T extends theoryType>(): NoPubSimQuery<T> {
-    const theory = UI.controls.theorySelector.value as T;
-    const strat = UI.controls.stratSelector.value as FullStratType<T>;
-    const sigma = parseSigma(isMainTheory(theory));
-
-    // Cap 입력창을 Time 입력창(d, h, m, s 단위)으로 활용
-    const time = parseTimeString(UI.controls.capInput.value);
-
-    // Extra 입력창을 Rho Step 입력창으로 활용 (기본값 5)
-    let step = 5;
-    try {
-        step = parseExponentialValue(UI.controls.extraInput.value);
-    } catch {
-        step = parseFloat(UI.controls.extraInput.value) || 5;
-    }
-    if (step <= 0) step = 5;
-
-    return {
-        queryType: "no_pub",
-        theory,
-        theorySpecificInputs: parseTheorySpecificInputs(),
-        stratSpecificInputs: parseStratSpecificInputs(strat),
-        strat,
-        sigma,
-        input: parseCurrency(UI.controls.currencyInput.value, theory, "rho"),
-        time,
-        step,
         settings: parseSettings()
     }
 }
@@ -455,7 +473,7 @@ export function parseQuery(): SimQuery {
         case "Time": return parseTimeSim();
         case "StepChain": return parseStepChainSim();
         case "Pub Table": return parsePubTableSim();
-        case "No Pub": return parseNoPubSim(); // <-- 추가된 케이스
+        case "No Pub": return parseNoPubSim(); // <-- No Pub 케이스 추가
         default: throw "This mode is not supported.";
     }
 }

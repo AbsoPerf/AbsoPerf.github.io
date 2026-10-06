@@ -61,15 +61,6 @@
           <span class="inputLabel">Cap: </span>
           <input type="text" class="capInput" placeholder="<rho>[r/t/m]>" spellcheck="false" />
         </div>
-        <!-- [추가] No-Pub 모드 전용 Time 및 Step 입력창 -->
-        <div class="noPubTimeWrapper hidden">
-          <span class="inputLabel">Time: </span>
-          <input type="text" class="noPubTimeInput" placeholder="e.g. 1d 12h, 45m, 3600s" spellcheck="false" />
-        </div>
-        <div class="noPubStepWrapper hidden">
-          <span class="inputLabel">Rho step: </span>
-          <input type="text" class="noPubStepInput" placeholder="e.g. 5" value="5" spellcheck="false" />
-        </div>
       </div>
       <div class="extraControlsWrapper controlsWrapper">
         <div>
@@ -156,6 +147,7 @@
         <option value="end">After other CTs</option>
         <option value="no">Don't sim</option>
       </select><br /><br />
+      <!--span>Skip completed CTs in "all" mode: </span> <input type="checkbox" class="skipcompletedcts" /><br /><br /-->
       <span>Show a2 and a3 lvl in EFAI strat output: </span> <input type="checkbox" class="a23" /><br /><br />
       <span>Show unofficial CTs: </span> <input type="checkbox" class="unofficials" /><br /><br />
       <span>Generate a total purchase list: </span> <input type="checkbox" class="totalPurchaseList" /><br /><br />
@@ -239,13 +231,6 @@
               <li>
                 <strong>Step:</strong>
                 A Variant of Chain that will sim in steps of n x tau/rho where n is any number.
-                <br>&nbsp;
-              </li>
-              <!-- [추가] No-Pub 모드 설명 -->
-              <li>
-                <strong>No Pub:</strong>
-                Simulates a single theory continuously for a specified duration of Time without publishing.
-                Outputs final rho, multiplier, and milestones at every rho step.
                 <br>&nbsp;
               </li>
             </ul>
