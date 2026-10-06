@@ -7,3 +7,5 @@ This website was originally developed by [XLII](https://github.com/tredec) and n
 the Exponential Idle community.
 
 The site is written in [TypeScript](https://www.typescriptlang.org/), built with [webpack](https://webpack.js.org/) and hosted on [GitHub Pages](https://pages.github.com).
+
+retrying
