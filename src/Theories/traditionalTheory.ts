@@ -218,7 +218,7 @@ export default abstract class
     const pubRho = isNoPub ? this.rho.value : this.pubRho;
     const pubTau = this.converter.convertTo({
       valueType: "rho",
-      value: pubRho
+      value: this.pubRho
     }, "tau");
     const finalTime = isNoPub ? this.t : this.pubT;
     const deltaTau = pubTau - startTau;
